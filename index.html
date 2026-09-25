@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nonsenseian | Loan Payoff Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#111827',
+                        darkCard: '#1F2937',
+                        darkBorder: '#374151'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+        .input-field {
+            width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #D1D5DB;
+            background-color: #F9FAFB; color: #111827; transition: all 0.2s ease;
+        }
+        .dark .input-field {
+            background-color: #374151; border-color: #4B5563; color: #F3F4F6;
+        }
+        .input-field:focus { outline: none; border-color: #3B82F6; ring: 2px; }
+        .loan-card { transition: all 0.2s ease; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-darkBg dark:text-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="w-full border-b border-gray-200 dark:border-darkBorder bg-white dark:bg-darkCard px-4 py-4 md:px-8 shadow-sm">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="/" class="text-3xl md:text-4xl font-extrabold tracking-tight text-blue-700 dark:text-blue-400 drop-shadow-sm hover:opacity-80 transition-opacity">
+                Nonsenseian
+            </a>
+            <button id="themeToggle" class="relative inline-flex h-8 w-16 shrink-0 items-center rounded-full bg-blue-200 dark:bg-gray-700 transition-colors duration-300 focus:outline-none shadow-inner hover:bg-blue-300 dark:hover:bg-gray-600">
+                <span class="absolute left-1.5 text-sm transition-opacity duration-300 dark:opacity-50">☀️</span>
+                <span class="absolute right-1.5 text-sm transition-opacity duration-300 opacity-50 dark:opacity-100">🌙</span>
+                <span class="z-10 inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 translate-x-1 dark:translate-x-9"></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 block">
+        
+        <!-- Tool Title -->
+        <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">
+                Loan Payoff Calculator
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Simulate avalanche payoff strategies, visualize interest burn, and calculate extra payment savings.</p>
+        </div>
+
+        <!-- BIG HEADER SUMMARY (Net Worth Style) -->
+        <div class="bg-white dark:bg-darkCard rounded-2xl shadow-md border border-gray-200 dark:border-darkBorder p-6 mb-8 flex flex-col lg:flex-row items-center gap-8">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full lg:w-2/3">
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wide">Total Principal 🏦</span>
+                    <span id="headPrincipal" class="text-3xl font-black text-gray-900 dark:text-white mt-1">$0</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wide">Total Interest 🔥</span>
+                    <span id="headInterest" class="text-3xl font-black text-red-600 dark:text-red-400 mt-1">$0</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wide">Total Paid 💸</span>
+                    <span id="headTotal" class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">$0</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wide">Payoff Time ⏳</span>
+                    <span id="headTime" class="text-2xl font-black text-green-600 dark:text-green-400 mt-1">0 yrs 0 mos</span>
+                </div>
+            </div>
+            
+            <!-- Pie Chart -->
+            <div class="w-full lg:w-1/3 flex justify-center">
+                <div class="relative w-40 h-40">
+                    <canvas id="loanChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3-Column Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
+            
+            <!-- COLUMN 1: LOAN PORTFOLIO & TARGET -->
+            <div class="lg:col-span-1 space-y-6 w-full">
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-md border border-gray-200 dark:border-darkBorder">
+                    <div class="flex justify-between items-center border-b pb-2 mb-4 border-gray-200 dark:border-darkBorder">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Your Loans</h2>
+                        <span id="loanCountBadge" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-xs font-bold rounded-full">1/20</span>
+                    </div>
+
+                    <!-- Dynamic Loan Container -->
+                    <div id="loansContainer" class="space-y-4 mb-4 max-h-[350px] overflow-y-auto pr-2">
+                        <!-- Rendered via JS -->
+                    </div>
+
+                    <button onclick="addLoan()" id="addLoanBtn" class="w-full py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 font-bold rounded-lg transition-colors shadow-sm text-sm border border-blue-200 dark:border-blue-700">
+                        ➕ Add Another Loan
+                    </button>
+
+                    <!-- Target Payoff Slider -->
+                    <div class="mt-6 pt-4 border-t border-gray-200 dark:border-darkBorder">
+                        <label class="block text-sm font-bold mb-1 flex justify-between">
+                            <span>Target Payoff Timeline</span>
+                            <span id="targetYearsLabel" class="text-blue-600 dark:text-blue-400">10 Years</span>
+                        </label>
+                        <input type="range" id="targetYears" min="1" max="50" value="10" class="w-full accent-blue-500" oninput="calculate()">
+                        <div class="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-center border border-gray-200 dark:border-gray-700">
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wide">Required Monthly Payment</p>
+                            <p id="requiredPaymentUI" class="text-2xl font-black text-gray-900 dark:text-white">$0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: INCOME PLANNER -->
+            <div class="lg:col-span-1 space-y-6 w-full">
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-md border border-gray-200 dark:border-darkBorder transition-all">
+                    
+                    <div class="flex items-center justify-between border-b pb-2 mb-4 border-gray-200 dark:border-darkBorder">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Income Planner</h2>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="useIncome" class="sr-only peer" onchange="toggleIncome(); calculate();">
+                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-green-500 relative"></div>
+                        </label>
+                    </div>
+
+                    <!-- Income Inputs (Hidden by default) -->
+                    <div id="incomeSection" class="opacity-50 pointer-events-none space-y-4 transition-opacity">
+                        <p class="text-xs text-gray-500">Calculate your net take-home pay to map out an accelerated debt strategy.</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">State</label>
+                                <select id="state" class="input-field" onchange="calculate()">
+                                    <option value="AL">Alabama</option>
+                                    <option value="CA" selected>California</option>
+                                    <option value="FL">Florida</option>
+                                    <option value="NY">New York</option>
+                                    <option value="TX">Texas</option>
+                                    <option value="WA">Washington</option>
+                                    <option value="OTHER">Other (~5%)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Filing Status</label>
+                                <select id="filingStatus" class="input-field" onchange="calculate()">
+                                    <option value="single">Single</option>
+                                    <option value="joint" selected>Joint</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Pay Type</label>
+                            <select id="payType" class="input-field" onchange="togglePayType(); calculate()">
+                                <option value="salary">Salary (Annual)</option>
+                                <option value="hourly">Hourly</option>
+                            </select>
+                        </div>
+
+                        <div id="salaryBlock">
+                            <label class="block text-sm font-medium mb-1">Annual Salary ($)</label>
+                            <input type="number" id="annualSalary" class="input-field" value="80000" min="0" oninput="calculate()">
+                        </div>
+
+                        <div id="hourlyBlock" class="hidden grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Hourly ($)</label>
+                                <input type="number" id="hourlyWage" class="input-field" value="30" min="0" oninput="calculate()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Hrs/Week</label>
+                                <input type="number" id="hoursPerWeek" class="input-field" value="40" min="0" max="168" oninput="calculate()">
+                            </div>
+                        </div>
+                        
+                        <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center border border-green-200 dark:border-green-800">
+                            <p class="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-wide">Estimated Monthly Net</p>
+                            <p id="netIncomeUI" class="text-2xl font-black text-green-700 dark:text-green-300">$0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMN 3: ACCELERATOR & INSIGHTS -->
+            <div class="lg:col-span-1 space-y-6 w-full">
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-md border border-gray-200 dark:border-darkBorder">
+                    <h2 class="text-xl font-semibold border-b pb-2 mb-4 border-gray-200 dark:border-darkBorder text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        Accelerator 🚀
+                    </h2>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold mb-1">Extra Monthly Payment ($)</label>
+                        <p class="text-xs text-gray-500 mb-2">Money applied *on top* of your required baseline payment.</p>
+                        <input type="number" id="extraPayment" class="input-field text-xl font-bold text-green-600 dark:text-green-400" value="0" min="0" oninput="calculate()">
+                        
+                        <!-- Auto-recommendation buttons -->
+                        <div id="incomeRecs" class="hidden flex gap-2 mt-2">
+                            <button onclick="setExtraPct(0.05)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">5% of Net</button>
+                            <button onclick="setExtraPct(0.10)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">10% of Net</button>
+                            <button onclick="setExtraPct(0.20)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">20% of Net</button>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights Box -->
+                    <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <h3 class="font-bold uppercase tracking-wider text-gray-500 text-xs mb-3">Payoff Insights</h3>
+                        <div id="insightsBox" class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // -----------------------
+        // THEME TOGGLE LOGIC
+        // -----------------------
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            if (pieChart) drawChart(lastChartData); // Redraw for proper text colors
+        });
+
+        // -----------------------
+        // STATE & DATA
+        // -----------------------
+        let loans = [{ id: 1, principal: 10000, rate: 8.5 }];
+        let loanIdCounter = 2;
+        let pieChart = null;
+        let lastChartData = { p: 0, i: 0 };
+        let currentNetPay = 0;
+
+        const stateTaxes = { 'AL': 0.04, 'CA': 0.08, 'FL': 0, 'NY': 0.06, 'TX': 0, 'WA': 0, 'OTHER': 0.05 };
+
+        // -----------------------
+        // UI INTERACTIONS
+        // -----------------------
+        function renderLoans() {
+            const container = document.getElementById('loansContainer');
+            container.innerHTML = '';
+            
+            loans.forEach((loan, index) => {
+                container.innerHTML += `
+                    <div class="loan-card bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 relative flex flex-col md:flex-row gap-3 items-end">
+                        ${loans.length > 1 ? `<button onclick="removeLoan(${loan.id})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow hover:bg-red-600 z-10">✕</button>` : ''}
+                        
+                        <div class="w-full md:w-2/3">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Loan ${index + 1} Balance ($)</label>
+                            <input type="number" class="input-field font-semibold" value="${loan.principal}" onchange="updateLoan(${loan.id}, 'principal', this.value)">
+                        </div>
+                        <div class="w-full md:w-1/3">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">APR (%)</label>
+                            <input type="number" class="input-field font-semibold" value="${loan.rate}" step="0.1" onchange="updateLoan(${loan.id}, 'rate', this.value)">
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('loanCountBadge').innerText = `${loans.length}/20`;
+            document.getElementById('addLoanBtn').disabled = loans.length >= 20;
+            document.getElementById('addLoanBtn').className = loans.length >= 20 
+                ? "w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-400 font-bold rounded-lg text-sm cursor-not-allowed" 
+                : "w-full py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 font-bold rounded-lg transition-colors shadow-sm text-sm border border-blue-200 dark:border-blue-700";
+            
+            calculate();
+        }
+
+        function addLoan() {
+            if (loans.length < 20) {
+                loans.push({ id: loanIdCounter++, principal: 5000, rate: 5.0 });
+                renderLoans();
+            }
+        }
+
+        function removeLoan(id) {
+            loans = loans.filter(l => l.id !== id);
+            renderLoans();
+        }
+
+        function updateLoan(id, field, value) {
+            let loan = loans.find(l => l.id === id);
+            if (loan) loan[field] = Math.max(0, parseFloat(value) || 0);
+            calculate();
+        }
+
+        function toggleIncome() {
+            let isActive = document.getElementById('useIncome').checked;
+            let section = document.getElementById('incomeSection');
+            let recs = document.getElementById('incomeRecs');
+            
+            if (isActive) {
+                section.classList.remove('opacity-50', 'pointer-events-none');
+                recs.classList.remove('hidden');
+            } else {
+                section.classList.add('opacity-50', 'pointer-events-none');
+                recs.classList.add('hidden');
+            }
+        }
+
+        function togglePayType() {
+            let type = document.getElementById('payType').value;
+            document.getElementById('salaryBlock').classList.toggle('hidden', type !== 'salary');
+            document.getElementById('hourlyBlock').classList.toggle('hidden', type === 'salary');
+        }
+
+        function setExtraPct(pct) {
+            if (currentNetPay > 0) {
+                let extra = Math.round(currentNetPay * pct);
+                document.getElementById('extraPayment').value = extra;
+                calculate();
+            }
+        }
+
+        // -----------------------
+        // CORE MATH ENGINES
+        // -----------------------
+        function calcTax(gross, status, state) {
+            let taxable = Math.max(0, gross);
+            let fica = Math.min(taxable, 168600) * 0.0765 + Math.max(0, taxable - 168600) * 0.0145;
+            let fed = 0;
+            let brackets = status === 'joint' ? 
+                [[23200, 0.1], [94300, 0.12], [201050, 0.22], [383900, 0.24], [487450, 0.32], [731200, 0.35], [Infinity, 0.37]] : 
+                [[11600, 0.1], [47150, 0.12], [100525, 0.22], [191950, 0.24], [243725, 0.32], [365600, 0.35], [Infinity, 0.37]];
+            let prev = 0;
+            for (let [b, r] of brackets) {
+                if (taxable > prev) fed += (Math.min(taxable, b) - prev) * r;
+                prev = b;
+            }
+            let st = taxable * (stateTaxes[state] || 0.05);
+            return { fed, st, fica, total: fed + st + fica };
+        }
+
+        function formatTime(months) {
+            if (months === Infinity) return "Never (Payment too low)";
+            let y = Math.floor(months / 12);
+            let m = Math.ceil(months % 12); // Ceil to ensure partial months don't show as 0 if y>0
+            if (m === 12) { y++; m = 0; }
+            if (y === 0) return `${m} mos`;
+            if (m === 0) return `${y} yrs`;
+            return `${y} yrs ${m} mos`;
+        }
+
+        // Simulates the exact Avalanche Method (pay highest interest rate first)
+        function simulateAvalanche(loanData, monthlyPayment) {
+            // Deep copy and sort by rate descending
+            let simLoans = JSON.parse(JSON.stringify(loanData)).sort((a,b) => b.rate - a.rate);
+            let months = 0;
+            let totalInterestPaid = 0;
+
+            // Infinite loop guard (if payment doesn't even cover Month 1 interest)
+            let firstMonthInterest = simLoans.reduce((sum, l) => sum + (l.principal * (l.rate/100/12)), 0);
+            if (monthlyPayment < firstMonthInterest && simLoans.length > 0) {
+                return { months: Infinity, interest: Infinity };
+            }
+
+            while (simLoans.length > 0 && months < 1200) { // Hard cap at 100 years
+                months++;
+                let paymentRemaining = monthlyPayment;
+
+                // 1. Pay interest across all active loans
+                for (let i = 0; i < simLoans.length; i++) {
+                    let interest = simLoans[i].principal * (simLoans[i].rate / 100 / 12);
+                    totalInterestPaid += interest;
+                    paymentRemaining -= interest;
+                }
+
+                // 2. Apply leftover to principal (Avalanche order)
+                for (let i = 0; i < simLoans.length; i++) {
+                    if (paymentRemaining <= 0) break;
+                    if (simLoans[i].principal > paymentRemaining) {
+                        simLoans[i].principal -= paymentRemaining;
+                        paymentRemaining = 0;
+                    } else {
+                        paymentRemaining -= simLoans[i].principal;
+                        simLoans[i].principal = 0;
+                    }
+                }
+
+                // Remove paid off loans
+                simLoans = simLoans.filter(l => l.principal > 0.001);
+            }
+            return { months, interest: totalInterestPaid };
+        }
+
+        // Binary search to find exact payment required to finish in exactly Target Years
+        function findRequiredPayment(loanData, targetMonths) {
+            let totalPrin = loanData.reduce((sum, l) => sum + l.principal, 0);
+            if (totalPrin === 0) return 0;
+            
+            let low = 0;
+            let high = totalPrin * 1.5; // Max payment would be paying it all immediately
+            let best = high;
+            
+            for (let i = 0; i < 50; i++) {
+                let mid = (low + high) / 2;
+                let res = simulateAvalanche(loanData, mid);
+                if (res.months <= targetMonths) {
+                    best = mid;
+                    high = mid; // Try going lower
+                } else {
+                    low = mid; // Need a higher payment
+                }
+            }
+            return Math.ceil(best);
+        }
+
+        // -----------------------
+        // MASTER CALCULATE
+        // -----------------------
+        function calculate() {
+            const totalPrin = loans.reduce((sum, l) => sum + l.principal, 0);
+            
+            // 1. Handle Target Slider
+            let targetYears = parseInt(document.getElementById('targetYears').value);
+            document.getElementById('targetYearsLabel').innerText = targetYears === 1 ? '1 Year' : `${targetYears} Years`;
+            
+            let requiredPayment = findRequiredPayment(loans, targetYears * 12);
+            document.getElementById('requiredPaymentUI').innerText = `$${requiredPayment.toLocaleString()}`;
+
+            // 2. Baseline Simulation (Using required payment)
+            let baseSim = simulateAvalanche(loans, requiredPayment);
+            
+            // 3. Handle Income Engine
+            if (document.getElementById('useIncome').checked) {
+                let state = document.getElementById('state').value;
+                let status = document.getElementById('filingStatus').value;
+                let payType = document.getElementById('payType').value;
+                let annualGross = 0;
+                
+                if (payType === 'salary') {
+                    annualGross = parseFloat(document.getElementById('annualSalary').value) || 0;
+                } else {
+                    let wage = parseFloat(document.getElementById('hourlyWage').value) || 0;
+                    let hrs = parseFloat(document.getElementById('hoursPerWeek').value) || 0;
+                    if (hrs > 168) { hrs = 168; document.getElementById('hoursPerWeek').value = 168; }
+                    annualGross = (Math.min(hrs, 40) * wage + Math.max(0, hrs - 40) * wage * 1.5) * 52;
+                }
+                
+                let taxes = calcTax(annualGross, status, state);
+                currentNetPay = Math.round((annualGross - taxes.total) / 12);
+                document.getElementById('netIncomeUI').innerText = `$${currentNetPay.toLocaleString()}`;
+            } else {
+                currentNetPay = 0;
+                document.getElementById('netIncomeUI').innerText = `$0`;
+            }
+
+            // 4. Extra Payment Simulation (Accelerated)
+            let extra = parseFloat(document.getElementById('extraPayment').value) || 0;
+            let finalPayment = requiredPayment + extra;
+            
+            let accelSim = extra > 0 ? simulateAvalanche(loans, finalPayment) : baseSim;
+
+            // 5. Update Header Stats (Reflects Accelerated if active, otherwise Baseline)
+            document.getElementById('headPrincipal').innerText = `$${totalPrin.toLocaleString()}`;
+            document.getElementById('headInterest').innerText = `$${Math.round(accelSim.interest).toLocaleString()}`;
+            document.getElementById('headTotal').innerText = `$${Math.round(totalPrin + accelSim.interest).toLocaleString()}`;
+            document.getElementById('headTime').innerText = formatTime(accelSim.months);
+            
+            if (accelSim.interest === Infinity) {
+                document.getElementById('headInterest').innerText = `Infinite`;
+                document.getElementById('headTotal').innerText = `Infinite`;
+            }
+
+            // 6. Draw Chart
+            lastChartData = { p: totalPrin, i: accelSim.interest === Infinity ? 0 : accelSim.interest };
+            drawChart(lastChartData);
+
+            // 7. Dynamic Insights
+            let insightsHtml = "";
+            if (totalPrin === 0) {
+                insightsHtml = "<p>Add a loan balance to see insights.</p>";
+            } else if (extra > 0 && baseSim.interest !== Infinity) {
+                let monthsSaved = baseSim.months - accelSim.months;
+                let interestSaved = baseSim.interest - accelSim.interest;
+                insightsHtml += `<p class="font-bold text-green-600 dark:text-green-400">✨ Acceleration Active</p>`;
+                insightsHtml += `<p>By contributing an extra <strong>$${extra.toLocaleString()}</strong> a month, your new payment becomes <strong>$${finalPayment.toLocaleString()}</strong>.</p>`;
+                
+                if (monthsSaved > 0) {
+                    insightsHtml += `<p>You will pay off your debt <strong>${formatTime(monthsSaved)} faster</strong>.</p>`;
+                } else {
+                    insightsHtml += `<p>You will pay off your debt slightly faster, wrapping up in the same calendar month.</p>`;
+                }
+                
+                if (interestSaved > 0) {
+                    insightsHtml += `<p>You will save a massive <strong>$${Math.round(interestSaved).toLocaleString()}</strong> in pure interest! 🔥</p>`;
+                }
+            } else {
+                insightsHtml += `<p>You are currently on track for the baseline <strong>${targetYears}-year</strong> timeline.</p>`;
+                insightsHtml += `<p class="mt-2 text-gray-500">Enable the Income Planner or add an extra monthly payment to see how much faster you can become debt-free.</p>`;
+            }
+            document.getElementById('insightsBox').innerHTML = insightsHtml;
+        }
+
+        // -----------------------
+        // CHART LOGIC
+        // -----------------------
+        function drawChart(dataObj) {
+            if (pieChart) pieChart.destroy();
+            let ctx = document.getElementById('loanChart').getContext('2d');
+            
+            let borderColor = document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff';
+
+            pieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Principal 🏦', 'Interest 🔥'],
+                    datasets: [{
+                        data: [dataObj.p, dataObj.i],
+                        backgroundColor: ['#3B82F6', '#EF4444'], // Blue, Red
+                        borderColor: borderColor,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let val = context.raw;
+                                    let total = dataObj.p + dataObj.i;
+                                    let pct = ((val / total) * 100).toFixed(1);
+                                    return ` $${val.toLocaleString(undefined, {maximumFractionDigits:0})} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'sliceEmojis',
+                    afterDatasetsDraw(chart) {
+                        const ctx = chart.ctx;
+                        chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+                            let label = chart.data.labels[index];
+                            let emoji = label.split(' ').pop(); 
+                            let center = datapoint.tooltipPosition();
+                            
+                            if (datapoint.circumference > 0.15) {
+                                ctx.save();
+                                ctx.font = '24px sans-serif'; 
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                                ctx.shadowBlur = 4;
+                                ctx.fillText(emoji, center.x, center.y);
+                                ctx.restore();
+                            }
+                        });
+                    }
+                }]
+            });
+        }
+
+        // Boot up
+        renderLoans();
+    </script>
+</body>
+</html>
