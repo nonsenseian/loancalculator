@@ -6,6 +6,7 @@
     <title>Nonsenseian | Loan Payoff Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://nonsenseian.github.io/global-components.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -35,20 +36,6 @@
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-darkBg dark:text-gray-100 font-sans min-h-screen flex flex-col">
 
-    <!-- Navigation -->
-    <nav class="w-full border-b border-gray-200 dark:border-darkBorder bg-white dark:bg-darkCard px-4 py-4 md:px-8 shadow-sm">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <a href="/" class="text-3xl md:text-4xl font-extrabold tracking-tight text-blue-700 dark:text-blue-400 drop-shadow-sm hover:opacity-80 transition-opacity">
-                Nonsenseian
-            </a>
-            <button id="themeToggle" class="relative inline-flex h-8 w-16 shrink-0 items-center rounded-full bg-blue-200 dark:bg-gray-700 transition-colors duration-300 focus:outline-none shadow-inner hover:bg-blue-300 dark:hover:bg-gray-600">
-                <span class="absolute left-1.5 text-sm transition-opacity duration-300 dark:opacity-50">☀️</span>
-                <span class="absolute right-1.5 text-sm transition-opacity duration-300 opacity-50 dark:opacity-100">🌙</span>
-                <span class="z-10 inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 translate-x-1 dark:translate-x-9"></span>
-            </button>
-        </div>
-    </nav>
-
     <!-- Main Container -->
     <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 block">
         
@@ -57,7 +44,7 @@
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">
                 Loan Payoff Calculator
             </h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-2">Simulate avalanche payoff strategies, visualize interest burn, and calculate extra payment savings.</p>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Simulate loan payoff strategies, visualize interest burn, and calculate extra payment savings.</p>
         </div>
 
         <!-- BIG HEADER SUMMARY (Net Worth Style) -->
@@ -228,19 +215,6 @@
     </main>
 
     <script>
-        // -----------------------
-        // THEME TOGGLE LOGIC
-        // -----------------------
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-            if (pieChart) drawChart(lastChartData); // Redraw for proper text colors
-        });
 
         // -----------------------
         // STATE & DATA
