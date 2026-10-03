@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nonsenseian | Loan Payoff Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://nonsenseian.github.io/global-components.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://nonsenseian.github.io/global-components.js?v=2"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -72,8 +72,8 @@
             
             <!-- Pie Chart -->
             <div class="w-full lg:w-1/3 flex justify-center">
-                <div class="relative w-40 h-40">
-                    <canvas id="loanChart"></canvas>
+                <div class="relative w-full h-64 lg:h-72">
+                    <div id="loanChart" class="w-full h-full"></div>
                 </div>
             </div>
         </div>
@@ -185,21 +185,47 @@
             <!-- COLUMN 3: ACCELERATOR & INSIGHTS -->
             <div class="lg:col-span-1 space-y-6 w-full">
                 <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-md border border-gray-200 dark:border-darkBorder">
-                    <h2 class="text-xl font-semibold border-b pb-2 mb-4 border-gray-200 dark:border-darkBorder text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        Accelerator 🚀
-                    </h2>
+                    <div class="flex justify-between items-center border-b pb-2 mb-4 border-gray-200 dark:border-darkBorder">
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                            Accelerator 🚀
+                        </h2>
+                    </div>
+
+                    <!-- Strategy Toggle -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold mb-2">Payoff Strategy</label>
+                        <div class="flex rounded-md shadow-sm" role="group">
+                            <button type="button" id="btnAvalanche" onclick="setStrategy('avalanche')" class="w-1/2 px-2 py-2 text-sm font-medium border border-gray-200 dark:border-gray-600 rounded-l-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:hover:bg-gray-600 dark:text-white bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transition-colors">
+                                Avalanche 📉<br><span class="text-[10px] font-normal">Highest Interest First</span>
+                            </button>
+                            <button type="button" id="btnSnowball" onclick="setStrategy('snowball')" class="w-1/2 px-2 py-2 text-sm font-medium border border-l-0 border-gray-200 dark:border-gray-600 rounded-r-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:bg-darkCard dark:hover:bg-gray-600 dark:text-gray-300 text-gray-700 bg-white transition-colors">
+                                Snowball ⛄<br><span class="text-[10px] font-normal">Smallest Balance First</span>
+                            </button>
+                        </div>
+                    </div>
                     
-                    <div class="mb-6">
+                    <div class="mb-5">
                         <label class="block text-sm font-bold mb-1">Extra Monthly Payment ($)</label>
-                        <p class="text-xs text-gray-500 mb-2">Money applied *on top* of your required baseline payment.</p>
+                        <p class="text-xs text-gray-500 mb-2">Money applied *on top* of required payment.</p>
                         <input type="number" id="extraPayment" class="input-field text-xl font-bold text-green-600 dark:text-green-400" value="0" min="0" oninput="calculate()">
                         
-                        <!-- Auto-recommendation buttons -->
                         <div id="incomeRecs" class="hidden flex gap-2 mt-2">
                             <button onclick="setExtraPct(0.05)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">5% of Net</button>
                             <button onclick="setExtraPct(0.10)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">10% of Net</button>
                             <button onclick="setExtraPct(0.20)" class="flex-1 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded">20% of Net</button>
                         </div>
+                    </div>
+
+                    <!-- Coffee Factor -->
+                    <div class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 transition-colors">
+                        <label class="block text-sm font-bold mb-1 text-amber-800 dark:text-amber-500">The "Coffee" Factor ☕</label>
+                        <p class="text-xs text-amber-700 dark:text-amber-600 mb-3">Skip a daily expense to see the compound effect on your debt.</p>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-semibold text-amber-800 dark:text-amber-500">$0</span>
+                            <input type="range" id="coffeeFactor" min="0" max="30" step="1" value="0" class="w-full accent-amber-500" oninput="updateCoffee()">
+                            <span class="text-sm font-semibold text-amber-800 dark:text-amber-500">$30/d</span>
+                        </div>
+                        <p class="text-center text-sm font-bold mt-2 text-amber-800 dark:text-amber-500">+$<span id="coffeeMonthly">0</span> / month</p>
                     </div>
 
                     <!-- AI Insights Box -->
@@ -223,6 +249,7 @@
         let loans = [{ id: 1, principal: 10000, rate: 8.5 }];
         let loanIdCounter = 2;
         let pieChart = null;
+        let currentStrategy = 'avalanche';
         let lastChartData = { p: 0, i: 0 };
         let currentNetPay = 0;
 
@@ -307,6 +334,25 @@
             }
         }
 
+        function setStrategy(strat) {
+            currentStrategy = strat;
+            if (strat === 'avalanche') {
+                document.getElementById('btnAvalanche').className = "w-1/2 px-2 py-2 text-sm font-medium border border-gray-200 dark:border-gray-600 rounded-l-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:hover:bg-gray-600 dark:text-white bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transition-colors";
+                document.getElementById('btnSnowball').className = "w-1/2 px-2 py-2 text-sm font-medium border border-l-0 border-gray-200 dark:border-gray-600 rounded-r-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:bg-darkCard dark:hover:bg-gray-600 dark:text-gray-300 text-gray-700 bg-white transition-colors";
+            } else {
+                document.getElementById('btnSnowball').className = "w-1/2 px-2 py-2 text-sm font-medium border border-l-0 border-gray-200 dark:border-gray-600 rounded-r-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:hover:bg-gray-600 dark:text-white bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transition-colors";
+                document.getElementById('btnAvalanche').className = "w-1/2 px-2 py-2 text-sm font-medium border border-gray-200 dark:border-gray-600 rounded-l-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 dark:bg-darkCard dark:hover:bg-gray-600 dark:text-gray-300 text-gray-700 bg-white transition-colors";
+            }
+            calculate();
+        }
+
+        function updateCoffee() {
+            let daily = parseInt(document.getElementById('coffeeFactor').value);
+            let monthly = daily * 30;
+            document.getElementById('coffeeMonthly').innerText = monthly;
+            calculate();
+        }
+
         // -----------------------
         // CORE MATH ENGINES
         // -----------------------
@@ -336,10 +382,15 @@
             return `${y} yrs ${m} mos`;
         }
 
-        // Simulates the exact Avalanche Method (pay highest interest rate first)
-        function simulateAvalanche(loanData, monthlyPayment) {
-            // Deep copy and sort by rate descending
-            let simLoans = JSON.parse(JSON.stringify(loanData)).sort((a,b) => b.rate - a.rate);
+        // Simulates Payoff (Avalanche or Snowball)
+        function simulatePayoff(loanData, monthlyPayment, strat) {
+            // Deep copy and sort
+            let simLoans = JSON.parse(JSON.stringify(loanData));
+            if (strat === 'avalanche') {
+                simLoans.sort((a,b) => b.rate - a.rate);
+            } else {
+                simLoans.sort((a,b) => a.principal - b.principal);
+            }
             let months = 0;
             let totalInterestPaid = 0;
 
@@ -389,7 +440,7 @@
             
             for (let i = 0; i < 50; i++) {
                 let mid = (low + high) / 2;
-                let res = simulateAvalanche(loanData, mid);
+                let res = simulatePayoff(loanData, mid, currentStrategy);
                 if (res.months <= targetMonths) {
                     best = mid;
                     high = mid; // Try going lower
@@ -414,7 +465,7 @@
             document.getElementById('requiredPaymentUI').innerText = `$${requiredPayment.toLocaleString()}`;
 
             // 2. Baseline Simulation (Using required payment)
-            let baseSim = simulateAvalanche(loans, requiredPayment);
+            let baseSim = simulatePayoff(loans, requiredPayment, currentStrategy);
             
             // 3. Handle Income Engine
             if (document.getElementById('useIncome').checked) {
@@ -442,9 +493,10 @@
 
             // 4. Extra Payment Simulation (Accelerated)
             let extra = parseFloat(document.getElementById('extraPayment').value) || 0;
-            let finalPayment = requiredPayment + extra;
+            let coffeeMonthly = parseInt(document.getElementById('coffeeFactor').value) * 30;
+            let finalPayment = requiredPayment + extra + coffeeMonthly;
             
-            let accelSim = extra > 0 ? simulateAvalanche(loans, finalPayment) : baseSim;
+            let accelSim = (extra > 0 || coffeeMonthly > 0) ? simulatePayoff(loans, finalPayment, currentStrategy) : baseSim;
 
             // 5. Update Header Stats (Reflects Accelerated if active, otherwise Baseline)
             document.getElementById('headPrincipal').innerText = `$${totalPrin.toLocaleString()}`;
@@ -465,11 +517,12 @@
             let insightsHtml = "";
             if (totalPrin === 0) {
                 insightsHtml = "<p>Add a loan balance to see insights.</p>";
-            } else if (extra > 0 && baseSim.interest !== Infinity) {
+            } else if ((extra > 0 || coffeeMonthly > 0) && baseSim.interest !== Infinity) {
                 let monthsSaved = baseSim.months - accelSim.months;
                 let interestSaved = baseSim.interest - accelSim.interest;
+                let totalExtra = extra + coffeeMonthly;
                 insightsHtml += `<p class="font-bold text-green-600 dark:text-green-400">✨ Acceleration Active</p>`;
-                insightsHtml += `<p>By contributing an extra <strong>$${extra.toLocaleString()}</strong> a month, your new payment becomes <strong>$${finalPayment.toLocaleString()}</strong>.</p>`;
+                insightsHtml += `<p>By contributing an extra <strong>$${totalExtra.toLocaleString()}</strong> a month, your new payment becomes <strong>$${finalPayment.toLocaleString()}</strong>.</p>`;
                 
                 if (monthsSaved > 0) {
                     insightsHtml += `<p>You will pay off your debt <strong>${formatTime(monthsSaved)} faster</strong>.</p>`;
@@ -491,66 +544,84 @@
         // CHART LOGIC
         // -----------------------
         function drawChart(dataObj) {
-            if (pieChart) pieChart.destroy();
-            let ctx = document.getElementById('loanChart').getContext('2d');
+            let chartDom = document.getElementById('loanChart');
+            if (!pieChart) pieChart = echarts.init(chartDom);
             
-            let borderColor = document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff';
+            let isDark = document.documentElement.classList.contains('dark');
+            let textColor = isDark ? '#F3F4F6' : '#111827';
+            
+            // Principal: Blue Gradient, Interest: Red Gradient
+            let colorPrincipal = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#60A5FA' },
+                { offset: 1, color: '#2563EB' }
+            ]);
+            let colorInterest = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#F87171' },
+                { offset: 1, color: '#DC2626' }
+            ]);
 
-            pieChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Principal 🏦', 'Interest 🔥'],
-                    datasets: [{
-                        data: [dataObj.p, dataObj.i],
-                        backgroundColor: ['#3B82F6', '#EF4444'], // Blue, Red
-                        borderColor: borderColor,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let val = context.raw;
-                                    let total = dataObj.p + dataObj.i;
-                                    let pct = ((val / total) * 100).toFixed(1);
-                                    return ` $${val.toLocaleString(undefined, {maximumFractionDigits:0})} (${pct}%)`;
-                                }
-                            }
-                        }
+            let option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        return `<div style="font-family:sans-serif;">
+                            <strong>${params.name}</strong><br/>
+                            Amount: $${params.value.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}<br/>
+                            Share: ${params.percent}%
+                        </div>`;
                     }
                 },
-                plugins: [{
-                    id: 'sliceEmojis',
-                    afterDatasetsDraw(chart) {
-                        const ctx = chart.ctx;
-                        chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
-                            let label = chart.data.labels[index];
-                            let emoji = label.split(' ').pop(); 
-                            let center = datapoint.tooltipPosition();
-                            
-                            if (datapoint.circumference > 0.15) {
-                                ctx.save();
-                                ctx.font = '24px sans-serif'; 
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                                ctx.shadowBlur = 4;
-                                ctx.fillText(emoji, center.x, center.y);
-                                ctx.restore();
-                            }
-                        });
+                series: [
+                    {
+                        name: 'Loan Split',
+                        type: 'pie',
+                        radius: ['35%', '60%'],
+                        center: ['50%', '50%'],
+                        avoidLabelOverlap: true,
+                        hoverOffset: 15,
+                        itemStyle: {
+                            borderRadius: 8,
+                            borderColor: isDark ? '#1F2937' : '#ffffff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: true,
+                            position: 'outside',
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                            formatter: '{b}\n{d}%'
+                        },
+                        labelLine: {
+                            show: true,
+                            length: 10,
+                            length2: 15,
+                            smooth: true,
+                            lineStyle: { width: 2, color: textColor }
+                        },
+                        data: [
+                            { value: dataObj.p, name: 'Principal 🏦', itemStyle: { color: colorPrincipal } },
+                            { value: dataObj.i, name: 'Interest 🔥', itemStyle: { color: colorInterest } }
+                        ]
                     }
-                }]
-            });
+                ]
+            };
+            
+            pieChart.setOption(option);
         }
 
         // Boot up
         renderLoans();
+
+        // Theme Toggle Observer to redraw charts with correct text colors
+        const themeObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (typeof calculate === 'function') calculate();
+                }
+            });
+        });
+        themeObserver.observe(document.documentElement, { attributes: true });
     </script>
 </body>
 </html>
