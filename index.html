@@ -357,8 +357,9 @@
         // CORE MATH ENGINES
         // -----------------------
         function calcTax(gross, status, state) {
-            let taxable = Math.max(0, gross);
-            let fica = Math.min(taxable, 168600) * 0.0765 + Math.max(0, taxable - 168600) * 0.0145;
+            let fica = Math.min(gross, 168600) * 0.0765 + Math.max(0, gross - 168600) * 0.0145;
+            let stdDed = status === 'joint' ? 29200 : 14600;
+            let taxable = Math.max(0, gross - stdDed);
             let fed = 0;
             let brackets = status === 'joint' ? 
                 [[23200, 0.1], [94300, 0.12], [201050, 0.22], [383900, 0.24], [487450, 0.32], [731200, 0.35], [Infinity, 0.37]] : 
